@@ -18,8 +18,9 @@
   :components ((:module "src"
                 :components
                 ((:file "bi-lang" :depends-on ("parser" "translator" "translator-2"))
-                 (:file "translator-2")
+                 (:file "translator-2" :depends-on ("print"))
                  (:file "translator")
+                 (:file "print")
                  (:file "parser"))))
   :description ""
   :long-description

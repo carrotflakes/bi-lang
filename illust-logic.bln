@@ -1,69 +1,3 @@
-fn makeList(n) {
-  if n = 0 {
-    []
-  } else {
-    ? : makeList(n - 1)
-  }
-}
-
-/*
-(function-definition
- :identifier "makeList"
- :parameters ((variable "a"))
- :body (block-statement
-        ((if-statement
-          :condition (unification :left (variable "a") :right (value 0))
-          :then (block-statement
-                 ((return :expressions ((list)))))
-          :else (block-statement
-                 ((return :expressions
-                          ((call :operator ":"
-                                 :left (logic-variable)
-                                 :right (call :operator "makeList"
-                                              :arguments ((call :operator "-"
-                                                                :left (variable "a")
-                                                                :right (value 1)))))))))))))
-
-(defun "makeList"
-  (progn
-   (unify input (list |a|))
-  (if (unify |a| 0)
-      (progn
-       (return (list)))
-      (progn
-       (return (cons (logic-variable) (call |makeList| (- |a| 1))))))))
-
-(<- (makeList ?n ?r)
-    (or (and (groundp ?n)
-             (or (and (= ?n 0)
-                      (= ?r ()))
-                 (and (not (= ?n 0))
-                      (eval ?0 (- ?n 1))
-                      (makeList ?0 ?1)
-                      (= ?r (?2 . ?1)))))
-        (and (groundp ?r)
-             (or (and (= ?r ())
-                      (= ?n 0))
-                 (and (= ?r (?2 . ?1))
-                      (makeList ?0 ?1)
-                      (eval ?n (+ ?0 1)))))))
-*/
-
-fn makeList'(list) {
-  match list {
-    [] => 0,
-    x : makeList(n - 1) => n + 1
-  }
-}
-
-fn list2d(width, height) {
-  if height = 0 {
-    []
-  } else {
-    makeList(width) : list2d(width, height - 1)
-  }
-}
-
 fn consListCarsCdrs(list2d) {
   if list2d = [] {
     [[], []]
@@ -101,3 +35,10 @@ fn illustLogic(field) {
   column = map('lineNumbers, list2dTranspose(field));
   [row, column]
 }
+
+
+print1 illustLogic([
+    [1, 0, 1],
+    [0, 1, 1],
+    [0, 1, 1],
+])

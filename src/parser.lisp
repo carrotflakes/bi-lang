@@ -46,7 +46,7 @@
             ws
             (ret :body) statement)))
 
-(defrule identifier (cap (and (! reserved) (cc "a-zA-Z") (* (cc "a-zA-Z0-9_")))))
+(defrule identifier (cap (and (! reserved) (cc "a-zA-Z") (* (cc "a-zA-Z0-9_")) (? "!"))))
 
 (defrule expression-statement
     (@ (and (ret 'expression-statement)

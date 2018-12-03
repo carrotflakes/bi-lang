@@ -1,12 +1,19 @@
 (defpackage bi-lang.translator-2
   (:use :cl
         :optima
-        :optima.extra)
+        :optima.extra
+        :bi-lang.print)
   (:import-from :preil
                 :<-
                 :do-solve)
   (:export :translate-2))
 (in-package :bi-lang.translator-2)
+
+(defun identifier-inverse (identifier)
+  (let ((name (symbol-name identifier)))
+    (if (string= name "!" :start1 (- (length name) 1))
+        (intern (subseq name 0 (- (length name) 1)))
+        (intern (format nil "~a!" name)))))
 
 (defun expression-subgoals (expression variable)
   (ematch
@@ -120,7 +127,9 @@
      (cons (car statement) (mapcar #'reduce-and (cdr statement))))
     (t
      statement)))
- 
+
+(defun inverse (form)
+  '(hoge))
 
 (defun top-level-statement (top-level-statement)
   (ematch
@@ -128,25 +137,38 @@
    ((list (guard it (string= it 'defun))
           name args statement)
     (let ((gs (loop for arg in args collect (gensym "?ARG"))))
-      `(<- (,name ?a ?r)
-           (= ?a ,gs)
-           ,@(loop
-               for arg in args
-               for g in gs
-               append (reverse (expression-subgoals arg g)))
-           ,(reduce-and (statement statement)))))
+      `((<- (,name ?a ?r)
+            (= ?a ,gs)
+            ,@(loop
+                for arg in args
+                for g in gs
+                append (reverse (expression-subgoals arg g)))
+            ,(reduce-and (statement statement)))
+        (<- (,(identifier-inverse name) ?r ?a)
+            ,(inverse (reduce-and (statement statement)))
+            ,@(loop
+                for arg in args
+                for g in gs
+                append (inverse (expression-subgoals arg g)))
+            (= ?r ,gs)))))
    ((list (guard it (string= it 'instraction))
           "printAll" expression)
-    `(preil:do-solve ((?x) (print ?x))
-       ,@(mapcar (lambda (x) `',x) (reverse (expression-subgoals expression '?x)))))
+    `((preil:do-solve ((?x) (printb ?x))
+        ,@(mapcar (lambda (x) `',x) (reverse (expression-subgoals expression '?x))))))
    ((list (guard it (string= it 'instraction))
           "print1" expression)
-    `(print (preil:solve-1
-             ?x
-             ,@(mapcar (lambda (x) `',x) (reverse (expression-subgoals expression '?x))))))))
+    `((block block
+        (preil:do-solve
+            ((?x)
+             (printb ?x) (return-from block))
+         ?x
+         ,@(mapcar (lambda (x) `',x) (reverse (expression-subgoals expression '?x))))
+        (format t "fail~%"))))))
 
 (defun top-level-statements (top-level-statements)
-  (mapcar #'top-level-statement top-level-statements))
+  (loop
+    for top-level-statement in top-level-statements
+    append (top-level-statement top-level-statement)))
 
 (defun translate-2 (ast)
   (top-level-statements ast))
