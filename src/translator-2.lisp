@@ -12,8 +12,8 @@
 (defun identifier-inverse (identifier)
   (let ((name (symbol-name identifier)))
     (if (string= name "!" :start1 (- (length name) 1))
-        (intern (subseq name 0 (- (length name) 1)))
-        (intern (format nil "~a!" name)))))
+        (intern (subseq name 0 (- (length name) 1)) (symbol-package identifier))
+        (intern (format nil "~a!" name) (symbol-package identifier)))))
 
 (defun expression-subgoals (expression variable)
   (ematch
@@ -29,13 +29,13 @@
     ((list (guard it (string= it '+)) left right)
      (let ((g1 (gensym "?V1"))
            (g2 (gensym "?V2")))
-       (list* `(eval ,variable (+ ,g1 ,g2))
+       (list* `(:+= ,g1 ,g2 ,variable)
               (append (expression-subgoals left g1)
                       (expression-subgoals right g2)))))
     ((list (guard it (string= it '-)) left right)
      (let ((g1 (gensym "?V1"))
            (g2 (gensym "?V2")))
-       (list* `(eval ,variable (- ,g1 ,g2))
+       (list* `(:-= ,g1 ,g2 ,variable)
               (append (expression-subgoals left g1)
                       (expression-subgoals right g2)))))
     ((list (guard it (string= it '|:|)) left right)
@@ -88,7 +88,7 @@
        `(or
          (and ,lemma ,cond
               ,(statement then))
-         (and ,lemma (not ,cond)
+         (and (:and* ,lemma (not ,cond))
               ,(statement else)))))
     ((list* (guard it (string= it 'match)) expression cases)
      (let ((g (gensym "?MATCH-VALUE")))
@@ -96,7 +96,8 @@
              (or ,@(loop
                      for (right statement) in cases
                      collect (multiple-value-bind (cond lemma) (unification `(= ,g ,right))
-                               `(and ,lemma ,cond ,(statement statement))))))))
+                               `(and (:and* ,lemma ,cond)
+                                     ,(statement statement))))))))
     ((list* (guard it (string= it 'return)) expressions)
      (let ((gs (loop for x in expressions collect (gensym "?"))))
        `(and ,@(loop
@@ -129,7 +130,19 @@
      statement)))
 
 (defun inverse (form)
-  '(hoge))
+  (cond
+    ((eq (first form) 'and)
+     `(and ,@(reverse (mapcar #'inverse (cdr form)))))
+    ((eq (first form) ':and*)
+     `(:and* ,@(mapcar #'inverse (cdr form))))
+    ((eq (first form) 'or)
+     `(or ,@(mapcar #'inverse (cdr form))))
+    ((eq (first form) 'not)
+     `(not ,(inverse (second form))))
+    ((member (first form) '(:map = :+= :-=))
+     form)
+    (t
+     (list (identifier-inverse (first form)) (third form) (second form)))))
 
 (defun top-level-statement (top-level-statement)
   (ematch
@@ -145,12 +158,12 @@
                 append (reverse (expression-subgoals arg g)))
             ,(reduce-and (statement statement)))
         (<- (,(identifier-inverse name) ?r ?a)
+            (= ?a ,gs)
             ,(inverse (reduce-and (statement statement)))
             ,@(loop
                 for arg in args
                 for g in gs
-                append (inverse (expression-subgoals arg g)))
-            (= ?r ,gs)))))
+                append (mapcar #'inverse (expression-subgoals arg g)))))))
    ((list (guard it (string= it 'instraction))
           "printAll" expression)
     `((preil:do-solve ((?x) (printb ?x))
@@ -161,7 +174,6 @@
         (preil:do-solve
             ((?x)
              (printb ?x) (return-from block))
-         ?x
          ,@(mapcar (lambda (x) `',x) (reverse (expression-subgoals expression '?x))))
         (format t "fail~%"))))))
 

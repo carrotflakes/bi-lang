@@ -24,7 +24,7 @@
     ((list* (guard it (string= it 'element))
             (plist :list expression
                    :number number))
-     `(elt ,(expression expression) ,(expression number)))
+     `(:elt ,(expression expression) ,(expression number)))
     ((list (guard it (string= it 'value)) value)
      value)
     ((list* (guard it (string= it 'list)) expressions)
@@ -51,8 +51,6 @@
             for e = (third case)
             for b = (fifth case)
             collect `(,(expression e) ,(statement b)))))
-    ((list* (guard it (string= it 'match-statement))
-            (plist :cases cases))) ; TODO
     ((list* (guard it (string= it 'return))
             (plist :expressions expressions))
      `(return ,@(mapcar #'expression expressions)))
